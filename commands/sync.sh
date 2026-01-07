@@ -123,7 +123,7 @@ cmd_sync() {
             fi
 
             success "  Cleaned up '${name}'"
-            ((cleaned_count++))
+            cleaned_count=$((cleaned_count + 1))
           else
             warn "  Failed to remove worktree '${name}'"
           fi
