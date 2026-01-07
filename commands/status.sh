@@ -227,7 +227,7 @@ cmd_status() {
           abbrev=$(hash_to_letters "$abbrev")
 
           # Check for collisions and find next available (O(1) lookups)
-          while [[ -n "${used_abbrevs[$abbrev]}" ]] || [[ -n "${unassigned_abbrevs_map[$abbrev]}" ]]; do
+          while [[ -n "${used_abbrevs[$abbrev]:-}" ]] || [[ -n "${unassigned_abbrevs_map[$abbrev]:-}" ]]; do
             abbrev=$(find_next_abbrev "$abbrev")
           done
 
