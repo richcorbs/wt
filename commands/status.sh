@@ -145,10 +145,19 @@ cmd_status() {
         continue
       fi
 
-      # Count uncommitted changes in worktree
+      # Get uncommitted files in worktree
+      local uncommitted_files=()
       local uncommitted_count=0
       if pushd "$abs_path" > /dev/null 2>&1; then
         uncommitted_count=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+
+        # Get list of uncommitted files with status
+        if [[ "$uncommitted_count" -gt 0 ]]; then
+          while IFS= read -r line; do
+            uncommitted_files+=("$line")
+          done < <(git status --porcelain 2>/dev/null)
+        fi
+
         popd > /dev/null 2>&1
       fi
 
@@ -174,7 +183,32 @@ cmd_status() {
         status_str=" - $(IFS=", "; echo "${status_parts[*]}")"
       fi
 
+      # Check for associated PR using GitHub CLI
+      local pr_info=""
+      if command -v gh > /dev/null 2>&1; then
+        # Query for PR associated with this branch
+        local pr_url
+        pr_url=$(gh pr list --head "$branch" --json url --jq '.[0].url' 2>/dev/null || echo "")
+
+        if [[ -n "$pr_url" ]]; then
+          # Get PR number from URL
+          local pr_number
+          pr_number=$(echo "$pr_url" | grep -oE '[0-9]+$')
+          pr_info=" ${BLUE}PR #${pr_number}${NC}: ${pr_url}"
+        fi
+      fi
+
       echo -e "  ${GREEN}${name}${NC} (${branch})${status_str}"
+      if [[ -n "$pr_info" ]]; then
+        echo -e "    ${pr_info}"
+      fi
+
+      # Show uncommitted files if any
+      if [[ ${#uncommitted_files[@]} -gt 0 ]]; then
+        for file_status in "${uncommitted_files[@]}"; do
+          echo -e "    ${file_status}"
+        done
+      fi
 
     done <<< "$names"
   fi

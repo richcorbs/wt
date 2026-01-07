@@ -3,14 +3,14 @@
 
 show_help() {
   cat <<EOF
-Usage: wt assign <file|abbreviation|directory> <worktree>
+Usage: wt assign <file|abbreviation|directory|*> <worktree>
 
 Assign uncommitted changes to a worktree and commit them to worktree-staging.
-Can assign a single file, all files in a directory, or use two-letter abbreviation.
+Can assign a single file, all files in a directory, all files, or use two-letter abbreviation.
 
 Arguments:
-  file|abbreviation|directory  File path, directory path, or two-letter abbreviation
-  worktree                     Name of the worktree
+  file|abbreviation|directory|*  File path, directory path, two-letter abbreviation, or * for all
+  worktree                       Name of the worktree
 
 Options:
   -h, --help    Show this help message
@@ -19,6 +19,7 @@ Examples:
   wt assign ab feature-auth                # Single file by abbreviation
   wt assign app/models/user.rb feature-auth # Single file by path
   wt assign app/models/ feature-auth       # All changed files in directory
+  wt assign * feature-auth                 # All uncommitted files
 EOF
 }
 
@@ -67,7 +68,33 @@ cmd_assign() {
   # Resolve file path(s)
   local files_to_assign=()
 
-  if [[ ${#file_or_abbrev} -eq 2 ]]; then
+  if [[ "$file_or_abbrev" == "*" ]]; then
+    # Assign all uncommitted files
+    info "Assigning all uncommitted changes..."
+
+    # Get all changed files
+    local changed_files
+    changed_files=$(git diff --name-only 2>/dev/null || true)
+    local staged_files
+    staged_files=$(git diff --cached --name-only 2>/dev/null || true)
+    local untracked_files
+    untracked_files=$(git ls-files --others --exclude-standard 2>/dev/null || true)
+
+    # Combine and deduplicate
+    local all_files
+    all_files=$(echo -e "${changed_files}\n${staged_files}\n${untracked_files}" | sort -u | grep -v '^$' || true)
+
+    if [[ -z "$all_files" ]]; then
+      warn "No uncommitted changes to assign"
+      exit 0
+    fi
+
+    while IFS= read -r file; do
+      files_to_assign+=("$file")
+    done <<< "$all_files"
+
+    info "Found ${#files_to_assign[@]} file(s) to assign"
+  elif [[ ${#file_or_abbrev} -eq 2 ]]; then
     # Might be an abbreviation
     local filepath
     filepath=$(get_filepath_from_abbrev "$file_or_abbrev")

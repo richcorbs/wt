@@ -6,8 +6,10 @@ A GitButler-inspired workflow using native git worktrees, allowing you to work o
 
 - **Dedicated staging branch**: All work happens in `worktree-staging`, keeping `main` clean
 - **File-level assignment**: Selectively assign files to different worktrees using two-letter abbreviations
-- **Directory assignment**: Assign all changed files in a directory at once
+- **Directory assignment**: Assign all changed files in a directory or all files at once
 - **Automatic commits**: Files are committed to `worktree-staging` when assigned
+- **Selective staging**: Stage specific files in worktrees before committing
+- **Smart commits**: Automatically detects staged files and commits accordingly
 - **Commit tracking**: Track which commits have been applied between branches
 - **Safe operations**: Work in isolation without affecting your main branch
 - **Simple CLI**: Single `wt` command with intuitive subcommands
@@ -131,8 +133,17 @@ Unassigned changes:
 
 Worktrees:
   feature-auth (feature/user-auth) - 2 uncommitted, 1 commit(s)
+    PR #123: https://github.com/user/repo/pull/123
+     M app/models/user.rb
+    A  app/services/auth_service.rb
   bugfix-login (bugfix/login-issue) - 0 uncommitted, 0 commit(s)
 ```
+
+Shows:
+- Unassigned changes with two-letter abbreviations
+- Worktree status with commit counts
+- Associated PR links (requires GitHub CLI)
+- Uncommitted files in each worktree with git status codes
 
 ### `wt create <name> <branch> [path]`
 
@@ -156,7 +167,7 @@ List all worktrees with their status.
 wt list
 ```
 
-### `wt assign <file|abbreviation|directory> <worktree>`
+### `wt assign <file|abbreviation|directory|*> <worktree>`
 
 Assign files to a worktree and commit them to `worktree-staging`.
 
@@ -169,6 +180,9 @@ wt assign app/models/user.rb feature-auth
 
 # All changed files in a directory
 wt assign app/models/ feature-auth
+
+# All uncommitted changes
+wt assign * feature-auth
 ```
 
 The files are:
@@ -176,13 +190,22 @@ The files are:
 2. Copied as uncommitted changes to the worktree
 3. Removed from "unassigned" list
 
-### `wt assign-all <worktree>`
+### `wt stage <worktree> <file|directory|*>`
 
-Assign all uncommitted changes to a worktree.
+Stage files in a worktree for selective commits.
 
 ```bash
-wt assign-all feature-auth
+# Stage single file
+wt stage feature-auth app/models/user.rb
+
+# Stage all files in directory
+wt stage feature-auth app/models/
+
+# Stage all files
+wt stage feature-auth *
 ```
+
+Use this when you want to commit only specific files from a worktree.
 
 ### `wt commit <worktree> <message>`
 
@@ -191,6 +214,11 @@ Commit changes in a worktree without having to cd into it.
 ```bash
 wt commit feature-auth "Add user authentication"
 ```
+
+The commit command is staging-aware:
+- If files are staged (via `wt stage`), commits only those files
+- If no files are staged, auto-stages all changes and commits them
+- Shows clear messaging about what's being committed
 
 ### `wt undo <worktree>`
 
@@ -353,6 +381,31 @@ wt assign app/models/ refactor
 wt commit refactor "Refactor models"
 ```
 
+### Selective Staging and Commits
+
+```bash
+wt create feature-x feature/multi-part
+
+# Assign multiple files to the worktree
+wt assign ab feature-x
+wt assign cd feature-x
+wt assign ef feature-x
+
+# Stage and commit only specific files
+wt stage feature-x app/models/user.rb
+wt commit feature-x "Add user model"
+
+# Stage and commit remaining files
+wt stage feature-x *
+wt commit feature-x "Add controllers and views"
+```
+
+Or commit everything at once without staging:
+```bash
+# If no files are staged, commit auto-stages all changes
+wt commit feature-x "Implement complete feature"
+```
+
 ### Undoing Mistakes
 
 ```bash
@@ -383,12 +436,14 @@ wt sync
 ## Tips
 
 1. **Always work in `worktree-staging`** - Don't make changes in `main`
-2. **Run `wt status` often** to see your abbreviations and worktree state
+2. **Run `wt status` often** to see your abbreviations, worktree state, and uncommitted files
 3. **Use directory assignment** for bulk file operations: `wt assign app/models/ feature-x`
-4. **Sync regularly** after merging features to main: `wt sync`
-5. **Use `wt unassign`** to correct assignment mistakes
-6. **Commit small, logical changes** in worktrees for clearer history
-7. **Use abbreviated commands** for speed: `wt as` (assign), `wt ap` (apply), `wt st` (status), `wt cr` (create)
+4. **Use selective staging** for multi-part commits: `wt stage <worktree> <file>` then `wt commit`
+5. **Skip staging for quick commits** - `wt commit` auto-stages everything if nothing is staged
+6. **Sync regularly** after merging features to main: `wt sync`
+7. **Use `wt unassign`** to correct assignment mistakes
+8. **Commit small, logical changes** in worktrees for clearer history
+9. **Use abbreviated commands** for speed: `wt as` (assign), `wt ap` (apply), `wt st` (status), `wt cr` (create)
 
 ## Troubleshooting
 

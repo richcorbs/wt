@@ -74,31 +74,57 @@ cmd_commit() {
   local abs_worktree_path="${repo_root}/${worktree_path}"
 
   # Enter worktree and commit
-  info "Committing changes in '${worktree_name}'..."
-
   if pushd "$abs_worktree_path" > /dev/null 2>&1; then
-    # Check if there are changes to commit
-    if ! has_uncommitted_changes; then
+    # Check if there are staged changes
+    local has_staged=false
+    if ! git diff --cached --quiet 2>/dev/null; then
+      has_staged=true
+    fi
+
+    # Check if there are any changes at all
+    if ! has_uncommitted_changes && [[ "$has_staged" == "false" ]]; then
       popd > /dev/null 2>&1
       warn "No changes to commit in '${worktree_name}'"
       exit 0
     fi
 
-    # Stage all changes and commit
-    if git add -A && git commit -m "$commit_message" 2>&1; then
-      local commit_sha
-      commit_sha=$(git rev-parse HEAD)
-      local short_sha
-      short_sha=$(git rev-parse --short HEAD)
+    # Commit based on staging status
+    if [[ "$has_staged" == "true" ]]; then
+      # Commit only staged files
+      info "Committing staged changes in '${worktree_name}'..."
+      if git commit -m "$commit_message" 2>&1; then
+        local commit_sha
+        commit_sha=$(git rev-parse HEAD)
+        local short_sha
+        short_sha=$(git rev-parse --short HEAD)
 
-      popd > /dev/null 2>&1
+        popd > /dev/null 2>&1
 
-      success "Changes committed in '${worktree_name}'"
-      info "Commit: ${short_sha}"
-      info "Message: ${commit_message}"
+        success "Staged changes committed in '${worktree_name}'"
+        info "Commit: ${short_sha}"
+        info "Message: ${commit_message}"
+      else
+        popd > /dev/null 2>&1
+        error "Failed to commit staged changes"
+      fi
     else
-      popd > /dev/null 2>&1
-      error "Failed to commit changes"
+      # Stage all changes and commit
+      info "Staging and committing all changes in '${worktree_name}'..."
+      if git add -A && git commit -m "$commit_message" 2>&1; then
+        local commit_sha
+        commit_sha=$(git rev-parse HEAD)
+        local short_sha
+        short_sha=$(git rev-parse --short HEAD)
+
+        popd > /dev/null 2>&1
+
+        success "All changes committed in '${worktree_name}'"
+        info "Commit: ${short_sha}"
+        info "Message: ${commit_message}"
+      else
+        popd > /dev/null 2>&1
+        error "Failed to commit changes"
+      fi
     fi
   else
     error "Failed to enter worktree directory"
