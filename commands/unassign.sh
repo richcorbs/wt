@@ -3,22 +3,23 @@
 
 show_help() {
   cat <<EOF
-Usage: wt unassign <file|abbreviation> <worktree>
+Usage: wt unassign <file|abbreviation|.> <worktree>
 
-Unassign a file from a worktree by reverting its commit in worktree-staging
-and removing the changes from the worktree. The file will show up as
+Unassign file(s) from a worktree by reverting their commits in worktree-staging
+and removing the changes from the worktree. The files will show up as
 "unassigned" again.
 
 Arguments:
-  file|abbreviation  File path or two-letter abbreviation
-  worktree           Name of the worktree
+  file|abbreviation|.  File path, two-letter abbreviation, or . for all assigned files
+  worktree             Name of the worktree
 
 Options:
   -h, --help    Show this help message
 
 Examples:
-  wt unassign ab feature-auth
-  wt unassign app/models/user.rb feature-auth
+  wt unassign ab feature-auth                # Single file by abbreviation
+  wt unassign app/models/user.rb feature-auth # Single file by path
+  wt unassign . feature-auth                 # All uncommitted files assigned to the worktree
 EOF
 }
 
