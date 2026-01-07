@@ -162,12 +162,10 @@ cmd_status() {
         popd > /dev/null 2>&1
       fi
 
-      # Count commits not in main
+      # Count commits not in worktree-staging
       local commit_count=0
       if pushd "$abs_path" > /dev/null 2>&1; then
-        local main_branch
-        main_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
-        commit_count=$(git rev-list --count "origin/${main_branch}..HEAD" 2>/dev/null || echo "0")
+        commit_count=$(git rev-list --count "worktree-staging..HEAD" 2>/dev/null || echo "0")
         popd > /dev/null 2>&1
       fi
 
