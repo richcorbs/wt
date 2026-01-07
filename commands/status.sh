@@ -204,22 +204,29 @@ cmd_status() {
 
       # Show uncommitted files if any
       if [[ ${#uncommitted_files[@]} -gt 0 ]]; then
-        # Generate abbreviations for worktree files
-        local wt_files_array=()
-        for file_status in "${uncommitted_files[@]}"; do
-          # Extract just the filename from git status format
-          local filepath="${file_status:3}"
-          wt_files_array+=("$filepath")
-        done
-
-        # Generate temporary abbreviations for display
-        local temp_abbrevs
+        # Generate display-only abbreviations for worktree files (sequential to avoid conflicts)
         declare -A temp_abbrevs
-        local abbrev_index=0
-        for filepath in "${wt_files_array[@]}"; do
+        local used_abbrevs=()
+
+        # Get current unassigned file abbreviations to avoid conflicts
+        local unassigned_abbrevs
+        unassigned_abbrevs=$(read_abbreviations 2>/dev/null | jq -r '.[]' 2>/dev/null || echo "")
+
+        for file_status in "${uncommitted_files[@]}"; do
+          local filepath="${file_status:3}"
+
+          # Generate abbreviation based on filepath
           local abbrev
-          abbrev=$(generate_abbreviation "$filepath")
+          abbrev=$(hash_filepath "$filepath")
+          abbrev=$(hash_to_letters "$abbrev")
+
+          # Check for collisions and find next available
+          while [[ " ${used_abbrevs[@]} " =~ " ${abbrev} " ]] || echo "$unassigned_abbrevs" | grep -q "^${abbrev}$"; do
+            abbrev=$(find_next_abbrev "$abbrev")
+          done
+
           temp_abbrevs["$filepath"]="$abbrev"
+          used_abbrevs+=("$abbrev")
         done
 
         # Display with abbreviations
