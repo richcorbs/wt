@@ -220,9 +220,9 @@ $WT_BIN assign feature/test app/models/admin.rb > /dev/null 2>&1
 STATUS_OUTPUT=$($WT_BIN status 2>&1)
 assert_contains "$STATUS_OUTPUT" "[applied]" "wt status should show [applied] for assigned worktree"
 
-# Test: wt sync
-test_section "Testing: wt sync"
-REPO=$(create_test_repo "sync-test")
+# Test: wt update
+test_section "Testing: wt update"
+REPO=$(create_test_repo "update-test")
 cd "$REPO"
 
 # Create a commit on main
@@ -233,8 +233,8 @@ git commit -m "Update on main" > /dev/null 2>&1
 # Initialize wt
 $WT_BIN init > /dev/null 2>&1
 
-# Sync should merge main into wt-working
-assert_success "$WT_BIN sync" "wt sync should succeed"
+# Update should merge main into wt-working
+assert_success "$WT_BIN update" "wt update should succeed"
 
 # Check that wt-working has the change from main
 assert_file_exists "README.md"

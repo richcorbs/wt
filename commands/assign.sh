@@ -289,12 +289,14 @@ cmd_assign() {
     # Show updated status
     source "${WT_ROOT}/commands/status.sh"
     cmd_status
+    exit 0
   elif [[ $assigned_count -gt 0 ]]; then
     warn "Assigned ${assigned_count} of ${#files_to_assign[@]} file(s) to '${worktree_name}'"
     echo ""
     # Show updated status
     source "${WT_ROOT}/commands/status.sh"
     cmd_status
+    exit 0
   else
     error "Failed to assign files"
   fi

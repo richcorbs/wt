@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Sync wt-working with main
+# Update wt-working with main
 
 show_help() {
   cat <<EOF
-Usage: wt sync [branch]
+Usage: wt update [branch]
 
-Sync wt-working with changes from another branch (default: main).
+Update wt-working with changes from another branch (default: main).
 Merges the specified branch into wt-working to keep it up-to-date.
 Automatically detects and cleans up worktrees whose branches have been merged.
 
 Arguments:
-  branch    Branch to sync from (default: main)
+  branch    Branch to update from (default: main)
 
 Options:
   -h, --help    Show this help message
@@ -24,12 +24,12 @@ What it does:
   6. Deletes corresponding remote branches
 
 Examples:
-  wt sync           # Sync from main and clean up merged worktrees
-  wt sync develop   # Sync from develop branch
+  wt update           # Update from main and clean up merged worktrees
+  wt update develop   # Update from develop branch
 EOF
 }
 
-cmd_sync() {
+cmd_update() {
   # Parse arguments
   local source_branch="main"
 
@@ -63,7 +63,7 @@ cmd_sync() {
     error "Branch '${source_branch}' does not exist"
   fi
 
-  info "Syncing wt-working with '${source_branch}'..."
+  info "Updating wt-working with '${source_branch}'..."
 
   # Fetch latest changes
   if git remote get-url origin > /dev/null 2>&1; then
@@ -77,7 +77,7 @@ cmd_sync() {
 
   # Merge source branch into wt-working
   if git merge --no-edit "${source_branch}" >/dev/null 2>&1; then
-    success "Successfully synced wt-working with '${source_branch}'"
+    success "Successfully updated wt-working with '${source_branch}'"
 
     # Show summary
     local merge_commit
