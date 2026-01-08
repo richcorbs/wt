@@ -100,8 +100,25 @@ cmd_commit() {
 
     # Build file list with git status indicators
     local file_list="*  [All files]"$'\n'
-    declare -A seen_dirs
 
+    # Extract all file paths for directory extraction
+    local all_file_paths=""
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      local filepath="${line:3}"
+      all_file_paths+="${filepath}"$'\n'
+    done <<< "$uncommitted_files"
+
+    # Extract directories using shared function
+    local unique_dirs
+    unique_dirs=$(extract_directories "$all_file_paths")
+
+    # Add directories first
+    while IFS= read -r dir; do
+      [[ -n "$dir" ]] && file_list+="D   ${dir}/"$'\n'
+    done <<< "$unique_dirs"
+
+    # Add individual files with status
     while IFS= read -r line; do
       [[ -z "$line" ]] && continue
       local status_code="${line:0:2}"
@@ -126,13 +143,6 @@ cmd_commit() {
       fi
 
       file_list+="${display_status}  ${filepath}${staged_indicator}"$'\n'
-
-      # Add parent directory if not already added
-      local dir=$(dirname "$filepath")
-      if [[ "$dir" != "." ]] && [[ -z "${seen_dirs[$dir]:-}" ]]; then
-        seen_dirs[$dir]=1
-        file_list+="DIR  ${dir}/"$'\n'
-      fi
     done <<< "$uncommitted_files"
 
     info "Select files to commit (TAB to select, ENTER to confirm)..."
@@ -151,18 +161,16 @@ cmd_commit() {
       info "Staging all files..."
       git add -A 2>&1
     else
-      # Stage selected files and directories
+      # Expand directories using shared function
+      local expanded_files
+      expanded_files=$(expand_directory_selections "$selected_files" "$all_file_paths")
+
+      # Stage selected files
       info "Staging selected files..."
       while IFS= read -r file; do
         [[ -z "$file" ]] && continue
-
-        # Check if it's a directory (ends with /)
-        if [[ "$file" == */ ]]; then
-          git add "${file%/}" 2>&1
-        else
-          git add "$file" 2>&1
-        fi
-      done <<< "$selected_files"
+        git add "$file" 2>&1
+      done <<< "$expanded_files"
     fi
 
     # Prompt for commit message (with pre-fill if provided)
