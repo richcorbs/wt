@@ -35,7 +35,7 @@ This document describes the architecture, design decisions, and development work
 │   ├── unapply.sh              # Revert applied commits
 │   ├── push.sh                 # Push worktree branch
 │   ├── pr.sh                   # Open GitHub PR page
-│   ├── sync.sh                 # Sync staging with main
+│   ├── update.sh               # Update staging with main
 │   ├── list.sh                 # List worktrees
 │   └── remove.sh               # Remove worktree
 ├── lib/
@@ -192,7 +192,7 @@ cmd_<command_name>() {
 - Safe experimentation without affecting `main`
 - Clear separation between "staging work" and "production code"
 - Ability to reset/rebase staging without affecting `main`
-- Explicit sync step (`wt sync`) to pull changes from `main`
+- Explicit update step (`wt update`) to pull changes from `main`
 
 ### 2. Why Commit on Assign?
 
