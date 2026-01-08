@@ -70,15 +70,32 @@ cmd_pr() {
     error "No origin remote found. Please add a remote first."
   fi
 
-  # Check if branch is pushed to origin, push if not
-  if ! git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
-    info "Branch '$branch' not yet pushed to origin. Pushing now..."
+  # Check if we need to push (branch doesn't exist on remote OR local is ahead)
+  local repo_root
+  repo_root=$(get_repo_root)
+  local worktree_path
+  worktree_path=$(get_worktree_path "$worktree_name")
+  local abs_path="${repo_root}/${worktree_path}"
 
-    local repo_root
-    repo_root=$(get_repo_root)
-    local worktree_path
-    worktree_path=$(get_worktree_path "$worktree_name")
-    local abs_path="${repo_root}/${worktree_path}"
+  local needs_push=false
+
+  if ! git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+    # Branch doesn't exist on remote
+    needs_push=true
+  else
+    # Branch exists, check if local is ahead
+    if pushd "$abs_path" > /dev/null 2>&1; then
+      local ahead_count
+      ahead_count=$(git rev-list --count "origin/${branch}..HEAD" 2>/dev/null || echo "0")
+      if [[ "$ahead_count" -gt 0 ]]; then
+        needs_push=true
+      fi
+      popd > /dev/null 2>&1
+    fi
+  fi
+
+  if [[ "$needs_push" == "true" ]]; then
+    info "Pushing latest changes to origin..."
 
     if pushd "$abs_path" > /dev/null 2>&1; then
       if git push -u origin "$branch" 2>&1; then
