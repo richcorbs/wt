@@ -129,7 +129,7 @@ cmd_commit() {
 
       # Add parent directory if not already added
       local dir=$(dirname "$filepath")
-      if [[ "$dir" != "." ]] && [[ -z "${seen_dirs[$dir]}" ]]; then
+      if [[ "$dir" != "." ]] && [[ -z "${seen_dirs[$dir]:-}" ]]; then
         seen_dirs[$dir]=1
         file_list+="DIR  ${dir}/"$'\n'
       fi
