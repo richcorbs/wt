@@ -16,8 +16,8 @@ REPO=$(create_test_repo "init-test")
 cd "$REPO"
 
 assert_success "$WT_BIN init" "wt init should succeed"
-assert_branch_exists "worktree-staging" "worktree-staging branch should exist"
-assert_current_branch "worktree-staging" "Should be on worktree-staging branch"
+assert_branch_exists "wt-working" "wt-working branch should exist"
+assert_current_branch "wt-working" "Should be on wt-working branch"
 assert_file_exists ".worktree-flow" ".worktree-flow directory should exist"
 assert_file_exists ".worktree-flow/metadata.json" "metadata.json should exist"
 
@@ -70,7 +70,7 @@ echo "class Admin; end" > app/models/admin.rb
 # Assign file - new argument order: worktree first, file second
 assert_success "$WT_BIN assign feature/test app/models/admin.rb" "wt assign should succeed with new arg order"
 
-# Check that file is committed in worktree-staging
+# Check that file is committed in wt-working
 LAST_COMMIT=$(git log -1 --format="%s")
 assert_contains "$LAST_COMMIT" "wt: assign" "Should have assignment commit"
 assert_contains "$LAST_COMMIT" "admin.rb" "Commit should mention file"
@@ -170,7 +170,7 @@ $WT_BIN assign feature/test app/models/admin.rb > /dev/null 2>&1
 # Unassign file - new argument order: worktree first, file second
 assert_success "$WT_BIN unassign feature/test app/models/admin.rb" "wt unassign should succeed with new arg order"
 
-# Check that file is back in worktree-staging as uncommitted
+# Check that file is back in wt-working as uncommitted
 STATUS_OUTPUT=$(git status --porcelain)
 assert_contains "$STATUS_OUTPUT" "admin.rb" "File should be uncommitted after unassign"
 
@@ -223,7 +223,7 @@ $WT_BIN create feature/test > /dev/null 2>&1
 echo "class Admin; end" > app/models/admin.rb
 $WT_BIN assign feature/test app/models/admin.rb > /dev/null 2>&1
 
-# Status should show [applied] because assignment commit is in worktree-staging
+# Status should show [applied] because assignment commit is in wt-working
 STATUS_OUTPUT=$($WT_BIN status 2>&1)
 assert_contains "$STATUS_OUTPUT" "[applied]" "wt status should show [applied] for assigned worktree"
 
@@ -240,13 +240,13 @@ git commit -m "Update on main" > /dev/null 2>&1
 # Initialize wt
 $WT_BIN init > /dev/null 2>&1
 
-# Sync should merge main into worktree-staging
+# Sync should merge main into wt-working
 assert_success "$WT_BIN sync" "wt sync should succeed"
 
-# Check that worktree-staging has the change from main
+# Check that wt-working has the change from main
 assert_file_exists "README.md"
 MAIN_CONTENT=$(grep "Main change" README.md || echo "")
-assert_contains "$MAIN_CONTENT" "Main change" "worktree-staging should have changes from main"
+assert_contains "$MAIN_CONTENT" "Main change" "wt-working should have changes from main"
 
 # Test: wt apply
 test_section "Testing: wt apply"
@@ -269,9 +269,9 @@ cd "$REPO"
 # Apply commits from worktree to staging
 assert_success "$WT_BIN apply feature/test" "wt apply should succeed"
 
-# Check that commit exists in worktree-staging
+# Check that commit exists in wt-working
 LAST_COMMIT=$(git log -1 --format="%s")
-assert_contains "$LAST_COMMIT" "Add post model" "Applied commit should be in worktree-staging"
+assert_contains "$LAST_COMMIT" "Add post model" "Applied commit should be in wt-working"
 
 # Test: wt unapply
 test_section "Testing: wt unapply"
