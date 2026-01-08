@@ -88,8 +88,8 @@ wt push feature/user-auth
 # 8. Create pull request
 wt pr feature/user-auth  # Opens GitHub PR creation page in browser
 
-# 9. After PR is merged to main, sync wt-working
-wt sync
+# 9. After PR is merged to main, update wt-working
+wt update
 # This merges main into wt-working and automatically cleans up merged worktrees
 ```
 
@@ -104,7 +104,7 @@ Instead of working directly in `main`, all your work happens in a dedicated `wt-
 3. **Assign**: `wt-working` stays in sync when files are assigned to worktrees
 4. **Worktrees**: `wt` automatically branches off of `wt-working` for you
 5. **Merge**: When features are done, merge to `main` via normal git PR workflow
-6. **Sync**: Use `wt sync` to merge `main` back into `wt-working` and cleanup your local branches and worktrees
+6. **Update**: Use `wt update` to merge `main` back into `wt-working` and cleanup your local branches and worktrees
 
 This keeps your `main` branch pristine while giving you a flexible staging area.
 
@@ -319,13 +319,13 @@ This command:
 
 Works with both HTTPS and SSH remote URLs.
 
-### `wt sync [branch]`
+### `wt update [branch]`
 
-Sync `wt-working` with another branch (default: main). Automatically detects and cleans up worktrees whose branches have been merged.
+Update `wt-working` with another branch (default: main). Automatically detects and cleans up worktrees whose branches have been merged.
 
 ```bash
-wt sync           # Sync from main and clean up merged worktrees
-wt sync develop   # Sync from develop
+wt update           # Update from main and clean up merged worktrees
+wt update develop   # Update from develop
 ```
 
 What it does:
@@ -406,13 +406,13 @@ $ wt pr feature/auth
   URL: https://github.com/user/repo/compare/main...feature/auth?expand=1
   ✓ PR page opened for 'feature/auth'
 
-# After PR is merged to main, sync
-$ wt sync
+# After PR is merged to main, update
+$ wt update
 
-  Syncing wt-working with 'main'...
+  Updating wt-working with 'main'...
   Fetching latest changes from origin...
   Updating local main from origin/main...
-  ✓ Successfully synced wt-working with 'main'
+  ✓ Successfully updated wt-working with 'main'
   Merge commit: a1b2c3d
   Checking for merged branches...
 
@@ -501,12 +501,12 @@ wt unassign feature/user-auth .
 
 ```bash
 # Your feature branches got merged to main on GitHub
-# Just run sync - it handles everything automatically
+# Just run update - it handles everything automatically
 
-wt sync
+wt update
 
 # Output:
-# ✓ Successfully synced wt-working with 'main'
+# ✓ Successfully updated wt-working with 'main'
 # ✓ Branch 'feature/user-auth' has been merged into main
 #   - Removing worktree 'auth'...
 #   - Deleting remote branch 'feature/user-auth'...
@@ -525,7 +525,7 @@ wt sync
 4. **Use directory assignment** for bulk file operations: `wt assign app/models feature-x`
 5. **Use selective staging** for multi-part commits: `wt stage <worktree> <file>` then `wt commit`
 6. **Skip staging for quick commits** - `wt commit` auto-stages everything if nothing is staged
-7. **Sync regularly** after merging features to main: `wt sync`
+7. **Update regularly** after merging features to main: `wt update`
 8. **Use `wt unassign`** to correct assignment mistakes
 9. **Commit small, logical changes** in worktrees for clearer history
 10. **Use abbreviated commands** for speed: `wt as` (assign), `wt ap` (apply), `wt cr` (create)
@@ -557,9 +557,9 @@ This can happen if files have diverged. Try:
 2. Using `wt apply` if needed
 3. Resolving any conflicts
 
-### Merge conflicts when syncing
+### Merge conflicts when updating
 
-When running `wt sync`, you may encounter merge conflicts. Resolve them normally:
+When running `wt update`, you may encounter merge conflicts. Resolve them normally:
 
 ```bash
 # Fix conflicts in files
