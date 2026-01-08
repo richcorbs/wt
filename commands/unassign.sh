@@ -5,7 +5,7 @@ show_help() {
   cat <<EOF
 Usage: wt unassign <worktree> [file|.]
 
-Unassign file(s) from a worktree by reverting their commits in worktree-staging
+Unassign file(s) from a worktree by reverting their commits in wt-working
 and removing the changes from the worktree. The files will show up as
 "unassigned" again.
 
@@ -61,11 +61,11 @@ cmd_unassign() {
   ensure_git_repo
   ensure_initialized
 
-  # Ensure on worktree-staging
+  # Ensure on wt-working
   local current_branch
   current_branch=$(git branch --show-current)
-  if [[ "$current_branch" != "worktree-staging" ]]; then
-    error "Must be on worktree-staging branch to unassign. Current branch: ${current_branch}"
+  if [[ "$current_branch" != "wt-working" ]]; then
+    error "Must be on wt-working branch to unassign. Current branch: ${current_branch}"
   fi
 
   # Check if worktree exists
@@ -73,9 +73,9 @@ cmd_unassign() {
     error "Worktree '$worktree_name' not found"
   fi
 
-  # Check for unassigned changes in worktree-staging
+  # Check for unassigned changes in wt-working
   if ! git diff-index --quiet HEAD --; then
-    error "Cannot unassign: worktree-staging has unassigned changes. Assign them first."
+    error "Cannot unassign: wt-working has unassigned changes. Assign them first."
   fi
 
   # Check if unassigning all files
@@ -122,7 +122,7 @@ cmd_unassign() {
     done
 
     success "Unassigned all files from '${worktree_name}'"
-    info "Files are now unassigned in worktree-staging"
+    info "Files are now unassigned in wt-working"
     echo ""
     source "${WT_ROOT}/commands/status.sh"
     cmd_status
@@ -173,7 +173,7 @@ cmd_unassign() {
 
   if true; then
     success "Unassigned '${filepath}' from '${worktree_name}'"
-    info "File is now uncommitted in worktree-staging"
+    info "File is now uncommitted in wt-working"
 
     # Try to remove from worktree (best effort)
     local repo_root
