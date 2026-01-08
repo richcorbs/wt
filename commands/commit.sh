@@ -5,19 +5,19 @@ show_help() {
   cat <<EOF
 Usage: wt commit <worktree> [message]
 
-Commit changes in a worktree without having to cd into it.
-If no message is provided, opens fzf to select files to commit.
+Commit changes in a worktree using interactive file selection.
+Always opens fzf to select files to commit. Staged files are marked with [S].
 
 Arguments:
   worktree    Name of the worktree
-  message     Optional commit message (prompts if not provided)
+  message     Optional commit message (pre-fills prompt if provided)
 
 Options:
   -h, --help    Show this help message
 
 Examples:
-  wt commit feature-auth "Add user authentication"
-  wt commit feature-auth    # Opens fzf to select files
+  wt commit feature-auth "Add user authentication"  # Selects files, pre-fills message
+  wt commit feature-auth                             # Selects files, prompts for message
 EOF
 }
 
