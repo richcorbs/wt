@@ -63,11 +63,6 @@ cmd_sync() {
     error "Branch '${source_branch}' does not exist"
   fi
 
-  # Check for uncommitted changes
-  if has_uncommitted_changes; then
-    error "You have uncommitted changes. Please commit or stash them before syncing."
-  fi
-
   info "Syncing worktree-staging with '${source_branch}'..."
 
   # Fetch latest changes
