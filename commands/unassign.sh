@@ -77,37 +77,46 @@ cmd_unassign() {
     info "Unassigning all files from '${worktree_name}'..."
 
     # Find all assignment commits for this worktree
-    local commit_pattern="wt: assign .* to ${worktree_name}"
-    local commits_to_revert=()
+    local files_to_restore=()
 
     while IFS= read -r sha; do
       local msg
       msg=$(git log -1 --format="%s" "$sha")
 
-      if [[ "$msg" =~ ^wt:\ assign\ .*\ to\ ${worktree_name}$ ]]; then
-        commits_to_revert+=("$sha")
+      if [[ "$msg" =~ ^wt:\ assign\ (.*)\ to\ ${worktree_name}$ ]]; then
+        local filepath="${BASH_REMATCH[1]}"
+        files_to_restore+=("$filepath:$sha")
       fi
     done < <(git log --format="%H" -n 100)  # Search last 100 commits
 
-    if [[ ${#commits_to_revert[@]} -eq 0 ]]; then
+    if [[ ${#files_to_restore[@]} -eq 0 ]]; then
       warn "No assignment commits found for '${worktree_name}'"
       exit 0
     fi
 
-    info "Found ${#commits_to_revert[@]} assignment commit(s) to revert"
+    info "Found ${#files_to_restore[@]} file(s) to unassign"
 
-    # Revert commits in reverse order (newest first)
-    for commit_sha in "${commits_to_revert[@]}"; do
-      local short_sha
-      short_sha=$(git rev-parse --short "$commit_sha")
+    # Restore each file to its pre-assignment state
+    for file_commit in "${files_to_restore[@]}"; do
+      local filepath="${file_commit%:*}"
+      local commit_sha="${file_commit#*:}"
+      local parent_commit="${commit_sha}^"
 
-      if ! git revert --no-edit "$commit_sha" 2>&1; then
-        error "Failed to revert commit ${short_sha}. There may be conflicts."
+      info "Unassigning ${filepath}..."
+
+      # Check if file existed before assignment
+      if git cat-file -e "${parent_commit}:${filepath}" 2>/dev/null; then
+        # File existed - restore to previous version
+        git show "${parent_commit}:${filepath}" > "${filepath}"
+        git add "${filepath}"
+      else
+        # File didn't exist - delete it
+        git rm "${filepath}" 2>/dev/null || rm -f "${filepath}"
       fi
     done
 
     success "Unassigned all files from '${worktree_name}'"
-    info "Files are now uncommitted in worktree-staging"
+    info "Files are now unassigned in worktree-staging"
     echo ""
     source "${WT_ROOT}/commands/status.sh"
     cmd_status
@@ -141,10 +150,22 @@ cmd_unassign() {
 
   info "Found assignment commit: ${short_sha}"
 
-  # Revert the commit
-  info "Reverting commit..."
+  # Restore file to pre-assignment state
+  info "Unassigning ${filepath}..."
 
-  if git revert --no-edit "$commit_sha" 2>&1; then
+  local parent_commit="${commit_sha}^"
+
+  # Check if file existed before assignment
+  if git cat-file -e "${parent_commit}:${filepath}" 2>/dev/null; then
+    # File existed - restore to previous version
+    git show "${parent_commit}:${filepath}" > "${filepath}"
+    git add "${filepath}"
+  else
+    # File didn't exist - delete it
+    git rm "${filepath}" 2>/dev/null || rm -f "${filepath}"
+  fi
+
+  if true; then
     success "Unassigned '${filepath}' from '${worktree_name}'"
     info "File is now uncommitted in worktree-staging"
 
