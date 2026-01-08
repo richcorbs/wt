@@ -65,7 +65,7 @@
 - `assign.sh` - Auto-creates worktrees, fzf selection, handles deleted files
 - `unassign.sh` - Uses patches to restore files (not git revert), avoids conflicts
 - `create.sh` - Simplified to single argument (branch name = worktree name)
-- `sync.sh` - Merges main into wt-working, auto-cleans merged branches
+- `update.sh` - Merges main into wt-working, auto-cleans merged branches
 - `commit.sh` - Always uses fzf with [S] indicator for staged files, message pre-fill support
 
 ## Status Indicators
