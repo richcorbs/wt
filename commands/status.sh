@@ -77,40 +77,35 @@ cmd_status() {
     echo ""
   fi
 
-  # Get uncommitted changes
-  local changed_files
-  changed_files=$(git diff --name-only 2>/dev/null || true)
-  local staged_files
-  staged_files=$(git diff --cached --name-only 2>/dev/null || true)
-  local untracked_files
-  untracked_files=$(git ls-files --others --exclude-standard 2>/dev/null || true)
-
-  # Combine all files (unique)
-  local all_files
-  all_files=$(echo -e "${changed_files}\n${staged_files}\n${untracked_files}" | sort -u | grep -v '^$' || true)
+  # Get uncommitted changes using git status --porcelain
+  local status_output
+  status_output=$(git status --porcelain 2>/dev/null || true)
 
   # Display unassigned changes
   echo "  Unassigned changes:"
-  if [[ -z "$all_files" ]]; then
+  if [[ -z "$status_output" ]]; then
     echo "    (none)"
   else
-    # Pre-build associative arrays for file status (O(n) instead of O(n²))
-    declare -A file_status_map
-    while IFS= read -r file; do
-      [[ -n "$file" ]] && file_status_map["$file"]="?"
-    done <<< "$untracked_files"
-    while IFS= read -r file; do
-      [[ -n "$file" ]] && file_status_map["$file"]="A"
-    done <<< "$staged_files"
-    while IFS= read -r file; do
-      [[ -n "$file" ]] && file_status_map["$file"]="M"
-    done <<< "$changed_files"
+    # Display files with swapped status format for visual progression
+    # Git format: XY where X=staged, Y=unstaged
+    # Display as: YX for left-to-right visual progression (unstaged → staged)
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      local status_code="${line:0:2}"
+      local filepath="${line:3}"
 
-    # Display files with status
-    while IFS= read -r file; do
-      local status="${file_status_map[$file]}"
-      echo -e "    ${status}  ${file}"
-    done <<< "$all_files"
+      # Swap X and Y for display: unstaged (Y) then staged (X)
+      local X="${status_code:0:1}"
+      local Y="${status_code:1:1}"
+      local display_status="${Y}${X}"
+
+      # Clean up double spaces
+      if [[ "$display_status" == "  " ]]; then
+        display_status=" "
+      fi
+
+      echo -e "    ${display_status}  ${filepath}"
+    done <<< "$status_output"
   fi
 
   echo ""
@@ -158,7 +153,7 @@ cmd_status() {
 
       # Check if directory exists
       if [[ ! -d "$abs_path" ]]; then
-        echo -e "    ${RED}${name}${NC} (${branch}) - ${RED}MISSING${NC}"
+        echo -e "    ${RED}${name}${NC} - ${RED}MISSING${NC}"
         continue
       fi
 
@@ -182,10 +177,17 @@ cmd_status() {
         popd > /dev/null 2>&1
       fi
 
-      # Check if commits have been applied to worktree-staging
+      # Check if this worktree's changes are in worktree-staging
+      # Look for assignment commits for this worktree in worktree-staging
       local applied_status=""
-      if [[ "$commit_count" -gt 0 ]]; then
-        # Check if the worktree commits exist in worktree-staging (by checking patch-id)
+      local assignment_commits
+      assignment_commits=$(git log worktree-staging --oneline --grep="wt: assign .* to ${name}" --max-count=50 2>/dev/null || echo "")
+
+      if [[ -n "$assignment_commits" ]]; then
+        # Found assignment commits - worktree is applied to staging
+        applied_status=" ${GREEN}[applied]${NC}"
+      elif [[ "$commit_count" -gt 0 ]]; then
+        # No assignment commits but has commits - check if commits are in staging via patch-id
         local unapplied_count=0
         if pushd "$abs_path" > /dev/null 2>&1; then
           # Get patch-ids of commits in worktree but not in worktree-staging
@@ -211,6 +213,33 @@ cmd_status() {
         fi
       fi
 
+      # Check if branch is pushed and ahead/behind remote
+      local push_status=""
+      if pushd "$abs_path" > /dev/null 2>&1; then
+        local upstream
+        upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || echo "")
+
+        if [[ -n "$upstream" ]]; then
+          local ahead
+          ahead=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo "0")
+          local behind
+          behind=$(git rev-list --count HEAD..@{u} 2>/dev/null || echo "0")
+
+          if [[ "$ahead" -gt 0 ]] && [[ "$behind" -gt 0 ]]; then
+            push_status=" ${YELLOW}[${ahead} ahead, ${behind} behind]${NC}"
+          elif [[ "$ahead" -gt 0 ]]; then
+            push_status=" ${YELLOW}[${ahead} ahead]${NC}"
+          elif [[ "$behind" -gt 0 ]]; then
+            push_status=" ${YELLOW}[${behind} behind]${NC}"
+          else
+            push_status=" ${GREEN}[pushed]${NC}"
+          fi
+        else
+          push_status=" ${YELLOW}[not pushed]${NC}"
+        fi
+        popd > /dev/null 2>&1
+      fi
+
       local status_parts=()
       if [[ "$uncommitted_count" -gt 0 ]]; then
         status_parts+=("${uncommitted_count} uncommitted")
@@ -221,7 +250,9 @@ cmd_status() {
 
       local status_str=""
       if [[ ${#status_parts[@]} -gt 0 ]]; then
-        status_str=" - $(IFS=", "; echo "${status_parts[*]}")${applied_status}"
+        status_str=" - $(IFS=", "; echo "${status_parts[*]}")${applied_status}${push_status}"
+      elif [[ -n "$push_status" ]] || [[ -n "$applied_status" ]]; then
+        status_str="${applied_status}${push_status}"
       fi
 
       # Check if branch has been merged into main
@@ -264,7 +295,7 @@ cmd_status() {
         pr_info="${GREEN}✓ Merged into ${main_branch}${NC}"
       fi
 
-      echo -e "    ${GREEN}${name}${NC} (${branch})${status_str}"
+      echo -e "    ${GREEN}${name}${NC}${status_str}"
       if [[ -n "$pr_info" ]]; then
         echo -e "      ${pr_info}"
       fi
@@ -273,14 +304,21 @@ cmd_status() {
       if [[ ${#uncommitted_files[@]} -gt 0 ]]; then
         for file_status in "${uncommitted_files[@]}"; do
           local status_code="${file_status:0:2}"
-          # Format status: if starts with space, use second char for alignment
-          if [[ "$status_code" == " "* ]]; then
-            status_code="${status_code:1:1}"
-          else
-            status_code="${status_code:0:1}"
-          fi
           local filepath="${file_status:3}"
-          echo -e "      ${status_code}  ${filepath}"
+
+          # Swap X and Y for display: unstaged (Y) then staged (X)
+          # Git format: XY where X=staged, Y=unstaged
+          # Display as: YX for left-to-right visual progression
+          local X="${status_code:0:1}"
+          local Y="${status_code:1:1}"
+          local display_status="${Y}${X}"
+
+          # Clean up double spaces
+          if [[ "$display_status" == "  " ]]; then
+            display_status=" "
+          fi
+
+          echo -e "      ${display_status}  ${filepath}"
         done
       fi
 
