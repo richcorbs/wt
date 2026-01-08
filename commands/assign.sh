@@ -130,7 +130,7 @@ cmd_assign() {
     info "Select files to assign (TAB to select, ENTER to confirm)..."
 
     local selected_files
-    selected_files=$(echo "$file_list" | fzf --multi --height=40% --border --prompt="Select files for ${worktree_name}> " | sed 's/^... //')
+    selected_files=$(echo "$file_list" | fzf --multi --height=40% --border --prompt="Select files for ${worktree_name}> " --bind=ctrl-j:down,ctrl-k:up,ctrl-d:half-page-down,ctrl-u:half-page-up | sed 's/^.  //')
 
     if [[ -z "$selected_files" ]]; then
       warn "No files selected"
