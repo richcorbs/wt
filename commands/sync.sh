@@ -88,6 +88,9 @@ cmd_sync() {
     info "Checking for merged branches..."
     echo ""
 
+    # First, prune any stale worktree registrations
+    git worktree prune 2>/dev/null
+
     local names
     names=$(list_worktree_names)
     local cleaned_count=0
@@ -137,11 +140,13 @@ cmd_sync() {
           else
             # No uncommitted changes - clean up completely
             info "  Removing worktree '${name}'..."
-            if git worktree remove ".worktrees/${name}" --force 2>/dev/null; then
-              # Delete local branch
-              info "  Deleting local branch '${branch}'..."
-              git branch -d "${branch}" >/dev/null 2>&1 || git branch -D "${branch}" >/dev/null 2>&1
 
+            # Try to remove worktree (may fail if already gone)
+            git worktree remove ".worktrees/${name}" --force 2>/dev/null || true
+
+            # Delete local branch (do this even if worktree removal failed)
+            info "  Deleting local branch '${branch}'..."
+            if git branch -d "${branch}" >/dev/null 2>&1 || git branch -D "${branch}" >/dev/null 2>&1; then
               # Delete remote branch if it exists
               if git ls-remote --exit-code --heads origin "${branch}" >/dev/null 2>&1; then
                 info "  Deleting remote branch '${branch}'..."
@@ -151,7 +156,7 @@ cmd_sync() {
               success "  Cleaned up '${name}'"
               cleaned_count=$((cleaned_count + 1))
             else
-              warn "  Failed to remove worktree '${name}'"
+              warn "  Failed to delete branch '${branch}' - it may have unmerged commits"
             fi
           fi
           echo ""
