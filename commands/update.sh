@@ -101,8 +101,20 @@ cmd_update() {
         branch=$(get_worktree_branch "$name")
 
         # Check if branch is merged into source branch
-        # Note: + prefix means checked out in a worktree, * means current branch
+        # First check git (for regular merges), then gh CLI (for squash/rebase merges)
+        local branch_is_merged=false
         if git branch --merged "${source_branch}" | grep -q "^[*+ ]*${branch}$"; then
+          branch_is_merged=true
+        elif command -v gh > /dev/null 2>&1; then
+          # Check for squash/rebase merged PRs via gh CLI
+          local pr_data
+          pr_data=$(gh pr list --head "$branch" --state merged --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [[ -n "$pr_data" ]]; then
+            branch_is_merged=true
+          fi
+        fi
+
+        if [[ "$branch_is_merged" == "true" ]]; then
           info "Branch '${branch}' has been merged into ${source_branch}"
 
           # Check for uncommitted changes

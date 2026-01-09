@@ -267,27 +267,26 @@ cmd_status() {
       # Check for associated PR using GitHub CLI
       local pr_info=""
       if command -v gh > /dev/null 2>&1; then
-        if [[ "$is_merged" == "true" ]]; then
-          # Check for merged PR
-          local pr_data
-          pr_data=$(gh pr list --head "$branch" --state merged --json number,url --jq '.[0]' 2>/dev/null || echo "")
+        # First check for merged PR (handles squash/rebase merges that git doesn't detect)
+        local pr_data
+        pr_data=$(gh pr list --head "$branch" --state merged --json number,url --jq '.[0]' 2>/dev/null || echo "")
 
-          if [[ -n "$pr_data" ]] && [[ "$pr_data" != "null" ]]; then
-            local pr_number
-            pr_number=$(echo "$pr_data" | jq -r '.number')
-            local pr_url
-            pr_url=$(echo "$pr_data" | jq -r '.url')
-            pr_info="${GREEN}✓ Merged${NC} ${BLUE}PR #${pr_number}${NC}: ${pr_url}"
-          else
-            pr_info="${GREEN}✓ Merged into ${main_branch}${NC}"
-          fi
+        if [[ -n "$pr_data" ]] && [[ "$pr_data" != "null" ]]; then
+          local pr_number
+          pr_number=$(echo "$pr_data" | jq -r '.number')
+          local pr_url
+          pr_url=$(echo "$pr_data" | jq -r '.url')
+          pr_info="${GREEN}✓ Merged${NC} ${BLUE}PR #${pr_number}${NC}: ${pr_url}"
+          is_merged=true
+        elif [[ "$is_merged" == "true" ]]; then
+          # Git detected merge but no PR found
+          pr_info="${GREEN}✓ Merged into ${main_branch}${NC}"
         else
-          # Query for open PR associated with this branch
+          # Check for open PR
           local pr_url
           pr_url=$(gh pr list --head "$branch" --json url --jq '.[0].url' 2>/dev/null || echo "")
 
           if [[ -n "$pr_url" ]]; then
-            # Get PR number from URL
             local pr_number
             pr_number=$(echo "$pr_url" | grep -oE '[0-9]+$')
             pr_info="${BLUE}PR #${pr_number}${NC}: ${pr_url}"

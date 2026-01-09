@@ -350,15 +350,22 @@ run_in_worktree() {
 # Check if a branch has been merged into another branch
 # Usage: is_branch_merged "feature-branch" "main"
 # Returns: 0 if merged, 1 if not merged
+# Checks both local branch and origin/<branch> for merge status
 is_branch_merged() {
   local branch="$1"
   local target_branch="$2"
 
+  # Check against local target branch
   if git branch --merged "$target_branch" 2>/dev/null | grep -q "^[*+ ]*${branch}$"; then
     return 0
-  else
-    return 1
   fi
+
+  # Also check against origin/<target_branch> (in case local isn't updated)
+  if git branch --merged "origin/${target_branch}" 2>/dev/null | grep -q "^[*+ ]*${branch}$"; then
+    return 0
+  fi
+
+  return 1
 }
 
 # Get the main branch name (main or master)
