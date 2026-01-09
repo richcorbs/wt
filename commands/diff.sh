@@ -187,6 +187,7 @@ TOGGLESCRIPT
 
   echo "$file_list" | fzf \
     --ansi \
+    --prompt "Search files: " \
     --preview "$preview_cmd" \
     --preview-window "right:60%:wrap" \
     --bind "s:execute-silent($toggle_script '$abs_worktree_path' {})+reload($list_script '$abs_worktree_path' '$main_branch')" \
