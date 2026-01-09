@@ -96,6 +96,17 @@ cmd_diff() {
 cd "$1" || exit 1
 main_branch="$2"
 
+# Count total files and staged files
+total_count=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+
+staged_count=$(git status --porcelain 2>/dev/null | while IFS= read -r line; do
+  X="${line:0:1}"
+  if [[ "$X" != " " ]] && [[ "$X" != "?" ]]; then echo x; fi
+done | wc -l | tr -d ' ')
+
+# Output header line first
+echo "${total_count} files • ${staged_count} staged"
+
 # Get files that differ from main (committed) and uncommitted changes
 {
   # Uncommitted changes
@@ -117,7 +128,7 @@ main_branch="$2"
       staged_indicator=" [S]"
     fi
 
-    echo "${display_status}  ${filepath}${staged_indicator}"
+    echo "${filepath}	${display_status}  ${filepath}${staged_indicator}"
   done
 
   # Committed changes vs main (only files not in uncommitted)
@@ -125,10 +136,10 @@ main_branch="$2"
     [[ -z "$filepath" ]] && continue
     # Skip if file has uncommitted changes (already shown above)
     if ! git status --porcelain "$filepath" 2>/dev/null | grep -q .; then
-      echo " C  ${filepath}"
+      echo "${filepath}	 C  ${filepath}"
     fi
   done
-}
+} | sort -t'	' -k1 | cut -f2-
 LISTSCRIPT
   chmod +x "$list_script"
 
@@ -158,7 +169,7 @@ TOGGLESCRIPT
   chmod +x "$toggle_script"
 
   # Build preview command - show diff against main, or file contents for new files
-  local preview_cmd="cd '$abs_worktree_path' && file=\$(echo {} | sed 's/^..  //' | sed 's/ \\[S\\]\$//' | sed 's/ \\[C\\]\$//'); status=\$(git status --porcelain \"\$file\" 2>/dev/null); if [[ \"\$status\" == \\?\\?* ]] || [[ \"\$status\" == A\\ * ]]; then echo '=== NEW FILE ==='; cat \"\$file\" 2>/dev/null; else git diff HEAD -- \"\$file\" 2>/dev/null || git diff '${main_branch}' -- \"\$file\" 2>/dev/null || cat \"\$file\" 2>/dev/null; fi"
+  local preview_cmd="cd '$abs_worktree_path' && _file=\$(echo {} | sed 's/^..  //' | sed 's/ \\[S\\]\$//' | sed 's/ \\[C\\]\$//'); _st=\$(git status --porcelain \"\$_file\" 2>/dev/null); if [[ \"\$_st\" == \\?\\?* ]] || [[ \"\$_st\" == A\\ * ]]; then echo '=== NEW FILE ==='; cat \"\$_file\" 2>/dev/null; else git diff HEAD -- \"\$_file\" 2>/dev/null || git diff '${main_branch}' -- \"\$_file\" 2>/dev/null || cat \"\$_file\" 2>/dev/null; fi"
 
   info "Reviewing diffs in '${worktree_name}' (s=toggle stage, enter/esc=exit)"
   echo ""
@@ -182,7 +193,8 @@ TOGGLESCRIPT
     --bind "enter:abort" \
     --bind "esc:abort" \
     --header "s=toggle stage | enter/esc=exit" \
-    --no-multi
+    --header-lines=1 \
+    --no-multi || true
 
   # Cleanup
   rm -f "$list_script" "$toggle_script"
